@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="description" content="初忆 CineYore · TVBox 本地包生成器">
+<title>初忆本地包生成器</title>
+<link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap">
+<script>
+(function(){
+  try{
+    var t = localStorage.getItem('cy-theme');
+    if(t === 'dark') document.documentElement.setAttribute('data-theme','dark');
+  }catch(e){}
+})();
+</script>
+<style>
+  :root{
+    --bg:linear-gradient(120deg,#f8fafc 0%,#f1f5f9 100%);
+    --ink:#1f2937;
+    --ink2:#5b6675;
+    --ink3:#939ca8;
+    --blue:#3b82f6;
+    --blue-d:#2563eb;
+    --blue-soft:#eff6ff;
+    --glass:rgba(255,255,255,.75);
+    --glass-2:rgba(255,255,255,.88);
+    --stroke:rgba(255,255,255,.65);
+    --stroke-in:#e2e8f0;
+    --shadow:0 8px 32px rgba(15,23,42,.06);
+    --shadow-hover:0 16px 40px rgba(15,23,42,.10);
+    --code-bg:#f1f5f9;
+    --ok:#16a34a;
+    --warn:#b45309;
+    --err:#dc2626;
+    --particle:rgba(59,130,246,.35);
+    --font:'Noto Sans SC','PingFang SC','Microsoft YaHei',-apple-system,BlinkMacSystemFont,sans-serif;
+    --mono:ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;
+  }
+  [data-theme="dark"]{
+    --bg:linear-gradient(120deg,#1e293b 0%,#0f172a 100%);
+    --ink:#e5e7eb;
+    --ink2:#a6b0bf;
+    --ink3:#7c8798;
+    --blue:#60a5fa;
+    --blue-d:#3b82f6;
+    --blue-soft:rgba(59,130,246,.16);
+    --glass:rgba(31,41,55,.75);
+    --glass-2:rgba(31,41,55,.88);
+    --stroke:rgba(255,255,255,.08);
+    --stroke-in:rgba(255,255,255,.14);
+    --shadow:0 8px 32px rgba(0,0,0,.22);
+    --shadow-hover:0 16px 40px rgba(0,0,0,.32);
+    --code-bg:rgba(255,255,255,.08);
+    --ok:#86efac;
+    --warn:#fcd34d;
+    --err:#fca5a5;
+    --particle:rgba(255,255,255,.55);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:var(--font);color:var(--ink);line-height:1.6;min-height:100vh;
+    background:var(--bg);background-attachment:fixed;
+    padding:22px 16px 60px;transition:background .4s ease,color .3s ease;
+    animation:pageIn .7s ease forwards;overflow-x:hidden;
+  }
+  @keyframes pageIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  #particles{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:-1;opacity:.55}
+  .wrap{max-width:760px;margin:0 auto;position:relative}
+
+  /* 卡片：白 75% 毛玻璃 + 20px 圆角 + 悬停上浮 */
+  .card{
+    background:var(--glass);border:1px solid var(--stroke);border-radius:20px;
+    box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.55);
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    padding:22px;margin-bottom:18px;position:relative;overflow:hidden;
+    transition:transform .35s cubic-bezier(.175,.885,.32,1.275),box-shadow .35s ease,background .3s;
+  }
+  .card:hover{transform:translateY(-4px);box-shadow:var(--shadow-hover),inset 0 1px 0 rgba(255,255,255,.55)}
+
+  /* 顶部信息卡 */
+  .hero{display:flex;align-items:center;gap:18px}
+  .avatar{
+    width:64px;height:64px;border-radius:50%;flex:none;position:relative;
+    background:linear-gradient(140deg,#eff6ff,#dbeafe);
+    border:4px solid rgba(255,255,255,.9);
+    box-shadow:0 8px 24px rgba(59,130,246,.22);
+    display:flex;align-items:center;justify-content:center;
+  }
+  [data-theme="dark"] .avatar{border-color:rgba(255,255,255,.12);background:linear-gradient(140deg,#1e293b,#243449)}
+  .avatar img{width:100%;height:100%;border-radius:50%;object-fit:cover;display:block}
+  .hero-txt{min-width:0}
+  .hero-txt h1{font-size:24px;line-height:1.25;font-weight:700;letter-spacing:-.2px}
+  .hero-txt p{font-size:13px;color:var(--ink2);margin-top:4px}
+  .tag-group{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+
+  .tag{
+    padding:5px 13px;font-size:12px;font-weight:500;border-radius:999px;
+    box-shadow:0 2px 4px rgba(0,0,0,.05);transition:.2s;display:inline-block;
+  }
+  .tag:hover{transform:scale(1.05)}
+  .tag-blue{background:var(--blue-soft);color:var(--blue-d)}
+  .tag-green{background:#f0fdf4;color:#16a34a}
+  .tag-purple{background:#faf5ff;color:#9333ea}
+  [data-theme="dark"] .tag-green{background:rgba(22,163,74,.2);color:#86efac}
+  [data-theme="dark"] .tag-purple{background:rgba(147,51,234,.2);color:#c4b5fd}
+
+  /* 区块标题：居中 + 蓝色渐变下划线 */
+  .section-head{display:flex;flex-direction:column;align-items:center;gap:6px;margin-bottom:22px}
+  .section-title{
+    position:relative;display:inline-block;font-size:19px;font-weight:700;color:var(--ink);
+    padding-bottom:12px;
+  }
+  .section-title::after{
+    content:"";position:absolute;left:50%;bottom:0;transform:translateX(-50%);
+    width:56px;height:3px;border-radius:3px;
+    background:linear-gradient(90deg,#3b82f6,#60a5fa);
+  }
+  .section-sub{font-size:12.5px;color:var(--ink3);text-align:center}
+
+  /* 表单 */
+  .field{margin-bottom:16px}
+  .field label.cap{
+    display:block;font-size:12.5px;font-weight:500;color:var(--ink2);margin-bottom:7px;
+  }
+  .field input,.field textarea{
+    width:100%;font-family:var(--mono);font-size:13.5px;color:var(--ink);
+    background:var(--glass-2);border:1px solid var(--stroke-in);border-radius:12px;
+    padding:12px 14px;outline:none;transition:.2s;
+  }
+  .field input{height:46px}
+  .field textarea{min-height:104px;resize:vertical;line-height:1.65}
+  .field input:focus,.field textarea:focus{
+    border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,130,246,.16);background:var(--glass-2);
+  }
+  .field .hint{font-size:11.5px;color:var(--ink3);margin-top:6px;line-height:1.55}
+
+  /* 标签按钮（原 chip） */
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+  .chip{
+    display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;
+    font-size:12.5px;font-weight:500;cursor:pointer;user-select:none;transition:.2s;
+    background:rgba(255,255,255,.6);border:1px solid var(--stroke-in);color:var(--ink2);
+    box-shadow:0 2px 4px rgba(0,0,0,.04);
+  }
+  [data-theme="dark"] .chip{background:rgba(255,255,255,.06)}
+  .chip:hover{transform:translateY(-1px);color:var(--blue-d);border-color:rgba(59,130,246,.4)}
+  .chip.on{
+    background:var(--blue-soft);border-color:rgba(59,130,246,.5);color:var(--blue-d);
+    box-shadow:0 4px 14px rgba(59,130,246,.18);
+  }
+  .chip.on svg{color:var(--blue-d)}
+
+  /* 选项开关 */
+  .opts{display:grid;gap:14px;margin-top:20px}
+  .switch{display:flex;align-items:flex-start;gap:13px;cursor:pointer}
+  .switch input{
+    appearance:none;-webkit-appearance:none;flex:none;margin-top:3px;cursor:pointer;
+    width:46px;height:26px;border-radius:13px;position:relative;transition:.24s;
+    background:rgba(148,163,184,.35);border:none;
+  }
+  [data-theme="dark"] .switch input{background:rgba(255,255,255,.16)}
+  .switch input::before{
+    content:"";position:absolute;left:3px;top:3px;width:20px;height:20px;border-radius:50%;
+    background:#fff;transition:.24s;box-shadow:0 1px 4px rgba(0,0,0,.18);
+  }
+  .switch input:checked{background:linear-gradient(135deg,#3b82f6,#2563eb)}
+  .switch input:checked::before{left:23px}
+  .switch .txt{font-size:13.5px;color:var(--ink)}
+  .switch .txt small{display:block;font-size:12px;color:var(--ink3);line-height:1.55;margin-top:3px}
+
+  /* 按钮 */
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    width:100%;padding:13px 18px;border-radius:12px;border:none;cursor:pointer;
+    font-family:var(--font);font-size:14.5px;font-weight:500;letter-spacing:.3px;
+    transition:.22s;
+  }
+  .btn-primary{
+    color:#fff;background:linear-gradient(135deg,#3b82f6,#2563eb);
+    box-shadow:0 8px 22px rgba(59,130,246,.32);
+  }
+  .btn-primary:hover{transform:translateY(-2px);box-shadow:0 12px 28px rgba(59,130,246,.4)}
+  .btn-primary:active{transform:translateY(0)}
+  .btn-primary[disabled]{opacity:.6;cursor:not-allowed;transform:none;box-shadow:none}
+  .btn-outline{
+    color:var(--blue-d);background:transparent;border:1px solid var(--blue);
+  }
+  .btn-outline:hover{background:var(--blue-soft);transform:translateY(-2px)}
+  .btn svg{width:18px;height:18px;flex:none}
+
+  /* 日志 */
+  .log{
+    font-family:var(--mono);font-size:12.5px;line-height:1.85;max-height:260px;overflow:auto;
+    background:var(--glass-2);border:1px solid var(--stroke-in);border-radius:14px;
+    padding:14px 16px;color:var(--ink2);white-space:pre-wrap;word-break:break-all;
+    scrollbar-width:thin;scrollbar-color:#cbd5e1 transparent;
+  }
+  .log::-webkit-scrollbar{width:6px}
+  .log::-webkit-scrollbar-thumb{background:rgba(148,163,184,.55);border-radius:3px}
+  .log .ok{color:var(--ok)} .log .warn{color:var(--warn)} .log .err{color:var(--err)} .log .dim{color:var(--ink3)}
+  .hide{display:none !important}
+
+  /* 结果统计 */
+  .summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+  .stat{
+    background:var(--glass-2);border:1px solid var(--stroke-in);border-radius:14px;
+    padding:14px;text-align:center;transition:.22s;
+  }
+  .stat:hover{transform:translateY(-3px);box-shadow:0 10px 22px rgba(59,130,246,.12)}
+  .stat b{display:block;font-size:20px;font-weight:700;color:var(--blue-d);font-variant-numeric:tabular-nums}
+  .stat span{font-size:11.5px;color:var(--ink3)}
+
+  .files{
+    font-family:var(--mono);font-size:12.5px;color:var(--ink2);
+    background:var(--glass-2);border:1px solid var(--stroke-in);border-radius:14px;
+    padding:12px 16px;margin:0 0 16px;
+  }
+  .files div{display:flex;justify-content:space-between;gap:12px;padding:3px 0}
+  .files span{color:var(--ink)}
+  .files em{color:var(--ink3);font-style:normal}
+
+  /* 折叠项 */
+  details{
+    background:var(--glass-2);border:1px solid var(--stroke-in);border-radius:14px;
+    margin-top:12px;overflow:hidden;
+  }
+  details+details{margin-top:10px}
+  summary{
+    list-style:none;cursor:pointer;padding:13px 16px;font-size:13.5px;font-weight:500;color:var(--ink);
+    display:flex;align-items:center;gap:8px;
+  }
+  summary::-webkit-details-marker{display:none}
+  summary::after{
+    content:"";width:7px;height:7px;margin-left:auto;flex:none;
+    border-right:2px solid var(--ink3);border-bottom:2px solid var(--ink3);
+    transform:rotate(45deg);transition:.22s;
+  }
+  details[open] summary::after{transform:rotate(-135deg)}
+  details p{font-size:12.5px;color:var(--ink2);padding:0 16px 13px;line-height:1.85}
+  details code{
+    font-family:var(--mono);font-size:11.5px;padding:1px 6px;border-radius:5px;
+    background:var(--code-bg);color:var(--blue-d);
+  }
+
+  /* 文件选择 */
+  .filepick{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;
+    background:var(--glass-2);border:1px dashed rgba(148,163,184,.75);border-radius:14px;
+    padding:14px 16px;margin-top:8px;font-size:13px;color:var(--ink2);transition:.2s;
+  }
+  .filepick:hover{border-color:var(--blue);background:var(--blue-soft)}
+  .filepick span{color:var(--ink)}
+  .filepick strong{
+    font-weight:500;font-size:12.5px;color:var(--blue-d);flex:none;
+    background:var(--blue-soft);border-radius:999px;padding:6px 14px;
+  }
+  .filepick input[type=file]{display:none}
+
+  .note{font-size:12.5px;color:var(--ink3);margin-top:12px;line-height:1.6}
+  .foot{text-align:center;font-size:12px;color:var(--ink3);margin-top:26px;letter-spacing:.3px}
+
+  /* 主题切换 */
+  .theme-btn{
+    position:fixed;right:16px;top:16px;z-index:10;width:42px;height:42px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+    background:var(--glass);border:1px solid var(--stroke);box-shadow:var(--shadow);
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);color:var(--blue-d);
+    transition:.2s;
+  }
+  .theme-btn:hover{transform:translateY(-2px)}
+  .theme-btn svg{width:20px;height:20px}
+
+  @media (max-width:560px){
+    body{padding:16px 12px 48px}
+    .card{padding:18px;border-radius:18px}
+    .hero{gap:14px}
+    .avatar{width:54px;height:54px}
+    .hero-txt h1{font-size:21px}
+    .summary{grid-template-columns:1fr 1fr}
+    .theme-btn{width:38px;height:38px;right:12px;top:12px}
+  }
+</style>
+</head>
+<body>
+<canvas id="particles"></canvas>
+<button class="theme-btn" id="themeBtn" title="切换主题" aria-label="切换主题">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+</button>
+
+<div class="wrap">
+
+  <!-- 顶部信息卡 -->
+  <section class="card hero">
+    <div class="avatar">
+      <img src="data:image/jpeg;base64,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" alt="初忆">
+    </div>
+    <div class="hero-txt">
+      <h1>初忆本地包生成器</h1>
+      <p>输入 TVBox 配置链接，自动下载 api.json 与 spider.jar，改写本地路径并写入 MD5，一键打包成 zip 本地包。</p>
+      <div class="tag-group">
+        <span class="tag tag-blue">TVBox</span>
+        <span class="tag tag-green">本地包</span>
+        <span class="tag tag-purple">CineYore</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 视图：主面板 ===== -->
+  <section class="card">
+    <div class="section-head">
+      <span class="section-title">配置来源</span>
+      <span class="section-sub">填链接就行，其余自动完成</span>
+    </div>
+
+    <div class="field">
+      <label class="cap" for="cfgUrl">api.json 配置链接</label>
+      <input id="cfgUrl" type="text" spellcheck="false"
+        value="https://gitee.com/cycod/tvbox/raw/master/api.json"
+        placeholder="https://xxx.com/tvbox/api.json">
+    </div>
+
+    <div class="chips">
+      <span class="chip on" data-url="https://gitee.com/cycod/tvbox/raw/master/api.json">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+        初忆 Gitee 主源
+      </span>
+      <span class="chip" id="pasteChip">改用粘贴的 JSON</span>
+    </div>
+
+    <div class="opts">
+      <label class="switch">
+        <input type="checkbox" id="optJar" checked>
+        <span class="txt">下载并内置 spider.jar
+          <small>生成后 spider 指向 ./jar/spider.jar</small>
+        </span>
+      </label>
+      <label class="switch">
+        <input type="checkbox" id="optMd5" checked>
+        <span class="txt">计算 jar 的 MD5 写回 spider
+          <small>格式 ./jar/spider.jar;md5;xxxx，内核据此校验与更新，建议开启</small>
+        </span>
+      </label>
+      <label class="switch">
+        <input type="checkbox" id="optLive">
+        <span class="txt">把直播 txt 也打进包里
+          <small>lives 的远程 txt 下载到 live/ 并改成本地路径，部分内核支持不稳定，默认关闭</small>
+        </span>
+      </label>
+      <label class="switch">
+        <input type="checkbox" id="optPy">
+        <span class="txt">把解析用 py 脚本也打进包里
+          <small>sites 里 http(s) 结尾的 .py/.js 下载到 py/，进阶用法，部分内核不认本地 py</small>
+        </span>
+      </label>
+    </div>
+
+    <div class="field" style="margin-top:20px">
+      <label class="cap" for="zipName">压缩包名称</label>
+      <input id="zipName" type="text" spellcheck="false" value="初忆本地包">
+    </div>
+
+    <div class="field">
+      <label class="cap" for="proxyUrl">自定义代理（可选，用 {url} 作占位）</label>
+      <input id="proxyUrl" type="text" spellcheck="false" placeholder="https://你的worker域名/?url={url}">
+    </div>
+
+    <button class="btn btn-primary" id="runBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      开始生成本地包
+    </button>
+    <p class="note">全部处理都在你的浏览器里完成，文件不会上传到任何服务器。</p>
+  </section>
+
+  <!-- ===== 视图：手动兜底 ===== -->
+  <section class="card">
+    <div class="section-head">
+      <span class="section-title">手动兜底</span>
+      <span class="section-sub">配置链接抓不到时用</span>
+    </div>
+    <div class="field">
+      <label class="cap" for="rawJson">直接粘贴 api.json 内容（留空则用上方的链接）</label>
+      <textarea id="rawJson" spellcheck="false" placeholder='{ "spider": "https://xxx/spider.jar;md5;abc", "sites": [ ... ] }'></textarea>
+    </div>
+    <label class="filepick" for="jarFile">
+      <span id="jarLabel">选择本地 spider.jar 文件（可选）</span>
+      <strong>选择文件</strong>
+      <input type="file" id="jarFile" accept=".jar,.zip">
+    </label>
+  </section>
+
+  <!-- ===== 视图：日志 ===== -->
+  <section class="card hide" id="logCard">
+    <div class="section-head">
+      <span class="section-title">处理过程</span>
+    </div>
+    <div class="log" id="log"></div>
+  </section>
+
+  <!-- ===== 视图：结果 ===== -->
+  <section class="card hide" id="resultCard">
+    <div class="section-head">
+      <span class="section-title">生成完成</span>
+    </div>
+    <div class="summary">
+      <div class="stat"><b id="stSites">0</b><span>站点</span></div>
+      <div class="stat"><b id="stLive">0</b><span>直播源</span></div>
+      <div class="stat"><b id="stSize">0</b><span>包体积</span></div>
+    </div>
+    <div class="files" id="fileList"></div>
+    <button class="btn btn-outline" id="dlBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 21h16"/></svg>
+      下载本地包 zip
+    </button>
+    <details>
+      <summary>怎么用这个本地包</summary>
+      <p>1. 把 zip 解压到设备里任意目录，保证 <code>api.json</code> 和 <code>jar/spider.jar</code> 保持同级结构不动。</p>
+      <p>2. 在 TVBox / 你的内核「设置 → 配置地址」里填本地路径，例如 <code>clan://localhost/本地包/api.json</code>，或使用内核提供的本地文件选择入口。</p>
+      <p>3. 若内核只支持远程链接：把解压后的文件夹整体丢到任意静态托管（Gitee Pages / Cloudflare Pages / 自建 nginx），再把配置地址指向里面的 <code>api.json</code>。</p>
+    </details>
+  </section>
+
+  <section class="card">
+    <div class="section-head">
+      <span class="section-title">说明</span>
+    </div>
+    <details open>
+      <summary>为什么有时抓不到配置？</summary>
+      <p>浏览器有跨域限制（CORS）：直接 fetch 别人的 raw 链接，服务器不给允许头就会被拦。本工具已做分层处理 —— Gitee 仓库地址自动改走 Gitee OpenAPI（接口带 <code>Access-Control-Allow-Origin: *</code>，可直读 api.json 与 spider.jar）；GitHub raw 本身允许跨域，可直连；其余站点再依次尝试公共代理和你填的自定义代理。全部失败时用「手动兜底」：api.json 粘贴进来、jar 本地选一下，照样能打包。</p>
+    </details>
+    <details>
+      <summary>支持哪些 spider 写法？</summary>
+      <p><code>spider.jar</code>、<code>./jar/spider.jar</code>、<code>https://xxx/spider.jar;md5;abc</code> 都会先解析成绝对地址下载，再统一改写为 <code>./jar/spider.jar;md5;新算的MD5</code>。</p>
+    </details>
+    <details>
+      <summary>MD5 是必须的吗？</summary>
+      <p>不是必须，但写上更稳：内核用它对 jar 做完整性校验，换包后若 MD5 不匹配可能拒绝加载或清缓存重下。</p>
+    </details>
+  </section>
+
+  <p class="foot">初忆 CineYore · 本地包工具</p>
+</div>
+
+<script>
+/* 主题切换 + 背景粒子 */
+(function(){
+  var root = document.documentElement;
+  var btn = document.getElementById('themeBtn');
+  btn.addEventListener('click', function(){
+    var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try{ localStorage.setItem('cy-theme', next); }catch(e){}
+  });
+
+  var cvs = document.getElementById('particles');
+  var ctx = cvs.getContext('2d');
+  var dots = [], W = 0, H = 0, dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+  function color(){
+    var v = getComputedStyle(root).getPropertyValue('--particle').trim();
+    return v || 'rgba(59,130,246,.35)';
+  }
+  function resize(){
+    W = cvs.clientWidth; H = cvs.clientHeight;
+    cvs.width = W * dpr; cvs.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    var n = Math.min(64, Math.max(26, Math.floor(W / 22)));
+    dots = [];
+    for(var i=0;i<n;i++){
+      dots.push({
+        x: Math.random() * W, y: Math.random() * H,
+        r: Math.random() * 1.8 + 0.7,
+        vx: (Math.random() - .5) * .35, vy: (Math.random() - .5) * .35
+      });
+    }
+  }
+  function draw(){
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = color();
+    for(var i=0;i<dots.length;i++){
+      var d = dots[i];
+      d.x += d.vx; d.y += d.vy;
+      if(d.x < -6) d.x = W + 6; if(d.x > W + 6) d.x = -6;
+      if(d.y < -6) d.y = H + 6; if(d.y > H + 6) d.y = -6;
+      ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2); ctx.fill();
+    }
+    requestAnimationFrame(draw);
+  }
+  resize();
+  window.addEventListener('resize', resize);
+  if(!window.matchMedia('(prefers-reduced-motion: reduce)').matches) draw();
+})();
+</script>
+<script>
+/* ==== CORE_START ==== 纯函数区（可独立测试，勿在此处操作 DOM） ==== */
+function u16(n){ return [(n>>>0)&0xff, (n>>>8)&0xff]; }
+function u32(n){ return [(n>>>0)&0xff, (n>>>8)&0xff, (n>>>16)&0xff, (n>>>24)&0xff]; }
+
+var CRC_TABLE = (function(){
+  var t = new Uint32Array(256);
+  for(var n=0;n<256;n++){
+    var c=n;
+    for(var k=0;k<8;k++){ c = (c & 1) ? (0xEDB88320 ^ (c>>>1)) : (c>>>1); }
+    t[n] = c>>>0;
+  }
+  return t;
+})();
+
+function crc32(bytes){
+  var crc = 0xFFFFFFFF;
+  for(var i=0;i<bytes.length;i++){
+    crc = (CRC_TABLE[(crc ^ bytes[i]) & 0xff] ^ (crc>>>8)) >>> 0;
+  }
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+
+var MD5_T = [
+  0xd76aa478,0xe8c7b756,0x242070db,0xc1bdceee,0xf57c0faf,0x4787c62a,0xa8304613,0xfd469501,
+  0x698098d8,0x8b44f7af,0xffff5bb1,0x895cd7be,0x6b901122,0xfd987193,0xa679438e,0x49b40821,
+  0xf61e2562,0xc040b340,0x265e5a51,0xe9b6c7aa,0xd62f105d,0x02441453,0xd8a1e681,0xe7d3fbc8,
+  0x21e1cde6,0xc33707d6,0xf4d50d87,0x455a14ed,0xa9e3e905,0xfcefa3f8,0x676f02d9,0x8d2a4c8a,
+  0xfffa3942,0x8771f681,0x6d9d6122,0xfde5380c,0xa4beea44,0x4bdecfa9,0xf6bb4b60,0xbebfbc70,
+  0x289b7ec6,0xeaa127fa,0xd4ef3085,0x04881d05,0xd9d4d039,0xe6db99e5,0x1fa27cf8,0xc4ac5665,
+  0xf4292244,0x432aff97,0xab9423a7,0xfc93a039,0x655b59c3,0x8f0ccc92,0xffeff47d,0x85845dd1,
+  0x6fa87e4f,0xfe2ce6e0,0xa3014314,0x4e0811a1,0xf7537e82,0xbd3af235,0x2ad7d2bb,0xeb86d391
+];
+var MD5_S = [7,12,17,22, 5,9,14,20, 4,11,16,23, 6,10,15,21];
+
+function rotl(x, c){ return (((x << c) | (x >>> (32-c))) >>> 0); }
+
+function md5Hex(bytes){
+  var len = bytes.length;
+  var totalBlocks = ((len + 8) >> 6) + 1;
+  var padded = new Uint8Array(totalBlocks << 6);
+  padded.set(bytes);
+  padded[len] = 0x80;
+  var bitLen = len * 8;
+  var hi = Math.floor(bitLen / 4294967296);
+  var lo = bitLen % 4294967296;
+  var end = padded.length - 8;
+  padded[end]   = lo & 0xff;
+  padded[end+1] = (lo>>>8) & 0xff;
+  padded[end+2] = (lo>>>16) & 0xff;
+  padded[end+3] = (lo>>>24) & 0xff;
+  padded[end+4] = hi & 0xff;
+  padded[end+5] = (hi>>>8) & 0xff;
+  padded[end+6] = (hi>>>16) & 0xff;
+  padded[end+7] = (hi>>>24) & 0xff;
+
+  var a0 = 0x67452301, b0 = 0xefcdab89, c0 = 0x98badcfe, d0 = 0x10325476;
+  var M = new Uint32Array(16);
+
+  for(var off=0; off<padded.length; off+=64){
+    for(var j=0;j<16;j++){
+      var k = off + (j<<2);
+      M[j] = (padded[k] | (padded[k+1]<<8) | (padded[k+2]<<16) | (padded[k+3]<<24)) >>> 0;
+    }
+    var A=a0, B=b0, C=c0, D=d0;
+    for(var i=0;i<64;i++){
+      var F, g;
+      if(i<16){ F = ((B & C) | ((~B) & D)) >>> 0; g = i; }
+      else if(i<32){ F = ((D & B) | ((~D) & C)) >>> 0; g = (5*i + 1) & 15; }
+      else if(i<48){ F = (B ^ C ^ D) >>> 0; g = (3*i + 5) & 15; }
+      else { F = (C ^ (B | (~D))) >>> 0; g = (7*i) & 15; }
+      var sum = (((A>>>0) + (F>>>0) + (MD5_T[i]>>>0) + (M[g]>>>0)) % 4294967296) >>> 0;
+      var s = MD5_S[(i>>4)*4 + (i & 3)];
+      var tmpD = D;
+      D = C; C = B;
+      B = (((B>>>0) + rotl(sum, s)) % 4294967296) >>> 0;
+      A = tmpD;
+    }
+    a0 = (((a0>>>0) + (A>>>0)) % 4294967296) >>> 0;
+    b0 = (((b0>>>0) + (B>>>0)) % 4294967296) >>> 0;
+    c0 = (((c0>>>0) + (C>>>0)) % 4294967296) >>> 0;
+    d0 = (((d0>>>0) + (D>>>0)) % 4294967296) >>> 0;
+  }
+  function hexLE(v){
+    return ((v & 0xff).toString(16).padStart(2,'0')
+      + ((v>>>8) & 0xff).toString(16).padStart(2,'0')
+      + ((v>>>16) & 0xff).toString(16).padStart(2,'0')
+      + ((v>>>24) & 0xff).toString(16).padStart(2,'0'));
+  }
+  return hexLE(a0) + hexLE(b0) + hexLE(c0) + hexLE(d0);
+}
+
+/* 极简 ZIP 打包（STORE 不压缩，二进制原样写入，适合已压缩的 jar） */
+function buildZip(files, dateObj){
+  var d = dateObj || new Date();
+  var y = d.getFullYear();
+  if(y < 1980) y = 1980;
+  var dosTime = ((d.getHours() << 11) | (d.getMinutes() << 5) | (Math.floor(d.getSeconds()/2))) & 0xffff;
+  var dosDate = (((y - 1980) << 9) | ((d.getMonth()+1) << 5) | d.getDate()) & 0xffff;
+  var enc = new TextEncoder();
+  var chunks = [];
+  var central = [];
+  var offset = 0;
+
+  files.forEach(function(f){
+    var nameBytes = enc.encode(f.name);
+    var data = f.data;
+    var crc = crc32(data);
+    var local = [].concat(
+      u32(0x04034b50), u16(20), u16(0x0800), u16(0),
+      u16(dosTime), u16(dosDate),
+      u32(crc), u32(data.length), u32(data.length),
+      u16(nameBytes.length), u16(0)
+    );
+    var localArr = new Uint8Array(local);
+    chunks.push(localArr, nameBytes, data);
+    central.push({ name:nameBytes, crc:crc, size:data.length, offset:offset });
+    offset += 30 + nameBytes.length + data.length;
+  });
+
+  var cdStart = offset;
+  var cdChunks = [];
+  central.forEach(function(c){
+    var e = [].concat(
+      u32(0x02014b50), u16(20), u16(20), u16(0x0800), u16(0),
+      u16(dosTime), u16(dosDate),
+      u32(c.crc), u32(c.size), u32(c.size),
+      u16(c.name.length), u16(0), u16(0),
+      u16(0), u16(0), u32(0), u32(c.offset)
+    );
+    cdChunks.push(new Uint8Array(e), c.name);
+  });
+  var cdSize = 0;
+  cdChunks.forEach(function(b){ cdSize += b.length; });
+  var eocd = new Uint8Array([].concat(
+    u32(0x06054b50), u16(0), u16(0),
+    u16(files.length), u16(files.length),
+    u32(cdSize), u32(cdStart), u16(0)
+  ));
+
+  var total = 0;
+  chunks.concat(cdChunks, [eocd]).forEach(function(b){ total += b.length; });
+  var out = new Uint8Array(total);
+  var pos = 0;
+  chunks.concat(cdChunks, [eocd]).forEach(function(b){ out.set(b, pos); pos += b.length; });
+  return out;
+}
+
+/* 拆 spider 字符串：<url>;md5;<hash> */
+function parseSpider(str){
+  var raw = String(str || '').trim();
+  if(!raw) return { url:'', md5:'' };
+  var parts = raw.split(';');
+  var url = (parts[0] || '').trim();
+  var md5 = '';
+  for(var i=1;i<parts.length-1;i++){
+    if(String(parts[i]).trim().toLowerCase() === 'md5'){ md5 = String(parts[i+1] || '').trim(); break; }
+  }
+  return { url:url, md5:md5 };
+}
+
+function resolveUrl(rel, base){
+  if(!rel) return '';
+  if(/^(http|https):\/\//i.test(rel)) return rel;
+  try { return new URL(rel, base).href; } catch(e){ return rel; }
+}
+
+/* 只替换 json 文本里的 spider 字段，保留原始排版 */
+function patchSpiderText(text, newSpider){
+  var re = /("spider"\s*:\s*)"([^"\\]|\\.)*"/;
+  if(!re.test(text)) return text;
+  return text.replace(re, function(m, p1){ return p1 + JSON.stringify(newSpider); });
+}
+
+/* 把 json 中可本地化的资源（py 脚本 / 直播 txt）挑出来 */
+function collectAssets(obj, baseUrl){
+  var pyList = [], liveList = [];
+  (obj.sites || []).forEach(function(s){
+    if(s && typeof s.api === 'string' && /^http(s)?:\/\//i.test(s.api) && /\.(py|js)(\?|$)/i.test(s.api)){
+      pyList.push({ site:s, url:s.api });
+    }
+  });
+  (obj.lives || []).forEach(function(l){
+    if(l && Array.isArray(l.channels)){
+      l.channels.forEach(function(ch){
+        (ch.urls || []).forEach(function(u){
+          if(typeof u === 'string' && /^http(s)?:\/\//i.test(u) && /\.(txt|m3u|m3u8)(\?|$)/i.test(u)){
+            liveList.push({ channel:ch, url:u });
+          }
+        });
+      });
+    } else if(l && typeof l.url === 'string' && /^http(s)?:\/\//i.test(l.url)){
+      liveList.push({ live:l, url:l.url });
+    }
+  });
+  return { pyList:pyList, liveList:liveList };
+}
+
+function baseName(u){
+  var clean = String(u).split('?')[0].split('#')[0];
+  var seg = clean.split('/').pop() || 'file';
+  return decodeURIComponent(seg).replace(/[^\w.\-\u4e00-\u9fa5]/g, '_');
+}
+
+/* 打包内文件名统一转成纯 ASCII，避免中文路径在部分设备上读不到 */
+function asciiSafeName(name, fallback){
+  var s = String(name || '');
+  var ext = '';
+  var m = s.match(/\.([A-Za-z0-9]{1,5})$/);
+  if(m){ ext = '.' + m[1].toLowerCase(); s = s.slice(0, s.length - m[0].length); }
+  var ascii = s.replace(/[^\w\-]/g, '');
+  if(ascii.length < 2) ascii = String(fallback || 'file');
+  return ascii + ext;
+}
+
+/* 识别 Gitee 仓库文件地址，返回 OpenAPI 所需信息（Gitee 的 OpenAPI 带 CORS，可绕过浏览器跨域） */
+function parseGiteeRaw(u){
+  var s = String(u || '');
+  var m = s.match(/^https?:\/\/gitee\.com\/([^\/\?#]+)\/([^\/\?#]+)\/(?:raw|blob)\/([^\/\?#]+)\/(.+)$/i);
+  if(m){
+    return { owner:m[1], repo:m[2].replace(/\.git$/,''), ref:m[3], path:decodeURIComponent(m[4].split('?')[0].split('#')[0]) };
+  }
+  m = s.match(/^https?:\/\/gitee\.com\/([^\/\?#]+)\/([^\/\?#]+)\.git$/i);
+  if(m) return null;
+  return null;
+}
+/* ==== CORE_END ==== */
+
+/* ==== 以下为浏览器交互层 ==== */
+(function(){
+  var $ = function(id){ return document.getElementById(id); };
+  var logEl = $('log');
+  var els = {
+    url: $('cfgUrl'), zip: $('zipName'), raw: $('rawJson'), jar: $('jarFile'), proxy: $('proxyUrl'),
+    optJar: $('optJar'), optMd5: $('optMd5'), optLive: $('optLive'), optPy: $('optPy')
+  };
+  var localJar = null;
+
+  var PROXIES = [
+    'https://api.allorigins.win/raw?url={url}',
+    'https://api.codetabs.com/v1/proxy/?quest={url}',
+    'https://api.cors.lol/?url={url}'
+  ];
+
+  function log(msg, cls){
+    var span = '<span class="' + (cls || 'dim') + '">' + msg + '</span>';
+    logEl.innerHTML += span + '\n';
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function fmtSize(n){
+    if(n > 1048576) return (n/1048576).toFixed(2) + ' MB';
+    if(n > 1024) return (n/1024).toFixed(1) + ' KB';
+    return n + ' B';
+  }
+
+  function b64ToBytes(b64){
+    var bin = atob(String(b64).replace(/\s/g, ''));
+    var out = new Uint8Array(bin.length);
+    for(var i=0;i<bin.length;i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+
+  /* Gitee 仓库文件走 OpenAPI 取，接口带 Access-Control-Allow-Origin: *，不受浏览器跨域限制 */
+  async function fetchGiteeFile(info){
+    var seg = info.path.split('/').map(function(s){ return encodeURIComponent(s); }).join('/');
+    var apiUrl = 'https://gitee.com/api/v5/repos/' + encodeURIComponent(info.owner) + '/' + encodeURIComponent(info.repo)
+      + '/contents/' + seg + '?ref=' + encodeURIComponent(info.ref);
+    var res = await fetch(apiUrl);
+    if(!res.ok) throw new Error('Gitee API HTTP ' + res.status);
+    var j = await res.json();
+    if(Array.isArray(j) || j.type === 'dir') throw new Error('目标是目录');
+    if(!j.content) throw new Error('接口未返回内容');
+    if(j.encoding && j.encoding !== 'base64') throw new Error('未知编码 ' + j.encoding);
+    return b64ToBytes(j.content);
+  }
+
+  /* 统一取文件：Gitee API → 直连 → 公共代理 → 自定义代理 */
+  async function getFile(url, opts){
+    opts = opts || {};
+    var check = function(bytes){
+      if(opts.minSize && bytes.length < opts.minSize) return '内容过小';
+      if(opts.validate && !opts.validate(bytes)) return '内容校验失败';
+      return '';
+    };
+
+    var g = parseGiteeRaw(url);
+    if(g){
+      try {
+        log('  · 尝试 Gitee OpenAPI …');
+        var gb = await fetchGiteeFile(g);
+        var ge = check(gb);
+        if(ge) throw new Error(ge);
+        log('  ✓ Gitee OpenAPI 命中（' + fmtSize(gb.length) + '）', 'ok');
+        return gb;
+      } catch(e){
+        log('  · Gitee API 未命中：' + (e && e.message ? e.message : '失败'), 'warn');
+      }
+    }
+
+    var tries = [{ label:'直连', url:url }];
+    var custom = (els.proxy.value || '').trim();
+    if(custom){
+      tries.push({ label:'自定义代理', url:custom.indexOf('{url}') >= 0 ? custom.replace('{url}', encodeURIComponent(url)) : custom + encodeURIComponent(url) });
+    }
+    PROXIES.forEach(function(p, i){ tries.push({ label:'公共代理' + (i+1), url:p.replace('{url}', encodeURIComponent(url)) }); });
+
+    var lastErr = '';
+    for(var i=0;i<tries.length;i++){
+      var t = tries[i];
+      try {
+        var ctrl = new AbortController();
+        var timer = setTimeout(function(){ ctrl.abort(); }, 15000);
+        var res = await fetch(t.url, { signal: ctrl.signal, redirect:'follow' });
+        clearTimeout(timer);
+        if(!res.ok){ lastErr = t.label + ' HTTP ' + res.status; continue; }
+        var bytes = new Uint8Array(await res.arrayBuffer());
+        var err = check(bytes);
+        if(err){ lastErr = t.label + ' ' + err; continue; }
+        log('  ✓ ' + t.label + ' 命中（' + fmtSize(bytes.length) + '）', 'ok');
+        return bytes;
+      } catch(e){
+        lastErr = t.label + ' ' + (e && e.message ? e.message : '失败');
+      }
+    }
+    throw new Error(lastErr || '全部线路失败');
+  }
+
+  function isZipHeader(bytes){
+    return bytes && bytes.length > 4 && bytes[0] === 0x50 && bytes[1] === 0x4b;
+  }
+
+  function validateJsonBytes(bytes){
+    try { JSON.parse(new TextDecoder().decode(bytes)); return true; } catch(e){ return false; }
+  }
+
+  async function run(){
+    var btn = $('runBtn');
+    btn.disabled = true;
+    btn.textContent = '处理中…';
+    logEl.innerHTML = '';
+    $('logCard').classList.remove('hide');
+    $('resultCard').classList.add('hide');
+
+    try {
+      var url = els.url.value.trim();
+      var raw = els.raw.value.trim();
+      var baseUrl = url || '';
+      var jsonText = null;
+
+      /* 1. 取配置文本 */
+      if(raw){
+        log('① 使用手动粘贴的 JSON 内容');
+        jsonText = raw;
+      } else {
+        if(!url) throw new Error('请填写配置链接，或粘贴 JSON 内容');
+        log('① 下载配置：' + url);
+        var cfgBytes = await getFile(url, { minSize:2, validate:validateJsonBytes });
+        jsonText = new TextDecoder().decode(cfgBytes);
+        log('  ✓ 配置已获取（' + fmtSize(cfgBytes.length) + '）', 'ok');
+      }
+
+      /* 2. 解析 */
+      var obj = null;
+      try { obj = JSON.parse(jsonText); } catch(e){ log('  ! JSON 解析失败，将只做文本级路径改写', 'warn'); }
+      if(!obj) throw new Error('配置不是合法 JSON，无法继续');
+      var sitesCount = (obj.sites || []).length;
+      var livesCount = (obj.lives || []).length;
+      log('② 解析完成：站点 ' + sitesCount + ' 个，直播源 ' + livesCount + ' 个');
+
+      /* 3. 处理 spider.jar */
+      var jarBytes = null;
+      var jarMd5 = '';
+      var spiderRaw = obj.spider || '';
+      var sp = parseSpider(spiderRaw);
+
+      if(els.optJar.checked){
+        if(localJar){
+          log('③ 使用本地选择的 jar：' + localJar.name);
+          jarBytes = localJar.data;
+        } else if(sp.url){
+          var jarUrl = resolveUrl(sp.url, baseUrl);
+          log('③ 下载 spider.jar：' + jarUrl);
+          try {
+            jarBytes = await getFile(jarUrl, { minSize:1000, validate:isZipHeader });
+            log('  ✓ jar 已获取（' + fmtSize(jarBytes.length) + '）', 'ok');
+          } catch(e){
+            log('  ✗ jar 下载失败：' + e.message, 'err');
+            log('  → 请用下方「手动兜底」选择本地 spider.jar 后重试', 'warn');
+            throw new Error('jar 下载失败');
+          }
+        } else {
+          log('  ! 配置里没有 spider 字段，跳过 jar', 'warn');
+        }
+
+        if(jarBytes){
+          if(els.optMd5.checked){
+            log('④ 计算 jar MD5…');
+            jarMd5 = md5Hex(jarBytes);
+            log('  ✓ MD5 = ' + jarMd5, 'ok');
+            /* 与配置里原有的 md5 比对，仅做提示 */
+            if(sp.md5 && sp.md5.toLowerCase() !== jarMd5){
+              log('  ! 与配置原有 md5 不一致（线上 jar 已更新），以新算值为准', 'warn');
+            }
+          }
+        }
+      } else {
+        log('③ 已跳过 jar 下载（spider 仍指向 ./jar/spider.jar，请自行放入）', 'warn');
+      }
+
+      var newSpider;
+      if(jarBytes && els.optMd5.checked && jarMd5){
+        newSpider = './jar/spider.jar;md5;' + jarMd5;
+      } else {
+        newSpider = './jar/spider.jar' + (sp.md5 ? (';md5;' + sp.md5) : '');
+      }
+
+      /* 4. 可选资源：py / 直播 txt */
+      var files = [];
+      var assets = collectAssets(obj, baseUrl);
+      var pyBytesList = [], liveBytesList = [];
+
+      if(els.optPy.checked && assets.pyList.length){
+        log('⑤ 本地化 py 脚本 ' + assets.pyList.length + ' 个');
+        var seenPy = {};
+        for(var i=0;i<assets.pyList.length;i++){
+          var it = assets.pyList[i];
+          var target = resolveUrl(it.url, baseUrl);
+          var fname = asciiSafeName(baseName(target), 'script' + (i + 1));
+          var rel = './py/' + fname;
+          if(!seenPy[fname]){
+            try {
+              var b = await getFile(target, { minSize:2 });
+              pyBytesList.push({ name:'py/' + fname, data:b });
+              seenPy[fname] = true;
+              log('  ✓ ' + fname, 'ok');
+            } catch(e){ log('  ✗ ' + fname + '：' + e.message, 'err'); continue; }
+          }
+          it.site.api = rel;
+        }
+      }
+
+      if(els.optLive.checked && assets.liveList.length){
+        log('⑥ 本地化直播 txt ' + assets.liveList.length + ' 个');
+        var seenLive = {};
+        for(var j=0;j<assets.liveList.length;j++){
+          var lt = assets.liveList[j];
+          var lurl = resolveUrl(lt.url, baseUrl);
+          var lname = asciiSafeName(baseName(lurl), 'live' + (j + 1));
+          var lrel = './live/' + lname;
+          if(!seenLive[lname]){
+            try {
+              var lb = await getFile(lurl, { minSize:2 });
+              liveBytesList.push({ name:'live/' + lname, data:lb });
+              seenLive[lname] = true;
+              log('  ✓ ' + lname, 'ok');
+            } catch(e){ log('  ✗ ' + lname + '：' + e.message, 'err'); continue; }
+          }
+          if(lt.channel){
+            lt.channel.urls = (lt.channel.urls || []).map(function(u){ return u === lt.url ? lrel : u; });
+          } else if(lt.live){
+            lt.live.url = lrel;
+          }
+        }
+      }
+
+      /* 5. 写出 api.json */
+      var outJson;
+      if(els.optPy.checked || els.optLive.checked){
+        obj.spider = newSpider;
+        outJson = JSON.stringify(obj, null, 2);
+        log('⑦ 重新序列化 api.json（已包含 py / 直播本地化）');
+      } else {
+        outJson = patchSpiderText(jsonText, newSpider);
+        log('⑦ 已改写 spider 字段（保留原有排版）');
+      }
+      log('  spider → ' + newSpider, 'ok');
+
+      files.push({ name:'api.json', data:new TextEncoder().encode(outJson) });
+      if(jarBytes) files.push({ name:'jar/spider.jar', data:jarBytes });
+      pyBytesList.forEach(function(f){ files.push(f); });
+      liveBytesList.forEach(function(f){ files.push(f); });
+
+      /* 6. 打包 */
+      log('⑧ 打包 zip…');
+      var zipBytes = buildZip(files, new Date());
+      var fileName = (els.zip.value.trim() || '初忆本地包') + '.zip';
+      var blob = new Blob([zipBytes], { type:'application/zip' });
+      var dlUrl = URL.createObjectURL(blob);
+
+      /* 7. 渲染结果 */
+      $('stSites').textContent = sitesCount;
+      $('stLive').textContent = livesCount;
+      $('stSize').textContent = fmtSize(zipBytes.length);
+      var fl = files.map(function(f){
+        return '<div><span>' + f.name + '</span><em>' + fmtSize(f.data.length) + '</em></div>';
+      }).join('');
+      $('fileList').innerHTML = fl;
+
+      var dlBtn = $('dlBtn');
+      dlBtn.onclick = function(){
+        var a = document.createElement('a');
+        a.href = dlUrl; a.download = fileName;
+        document.body.appendChild(a); a.click(); a.remove();
+      };
+      $('resultCard').classList.remove('hide');
+      $('resultCard').scrollIntoView({ behavior:'smooth', block:'start' });
+      log('✓ 生成完成：' + fileName + '　点击下方按钮下载', 'ok');
+    } catch(err){
+      log('✗ 失败：' + (err && err.message ? err.message : err), 'err');
+      log('→ 如果提示代理/跨域失败，把 api.json 内容粘到「手动兜底」，并选择本地 jar 再试一次', 'warn');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '开始生成本地包';
+    }
+  }
+
+  document.querySelectorAll('.chip[data-url]').forEach(function(c){
+    c.addEventListener('click', function(){
+      document.querySelectorAll('.chip[data-url]').forEach(function(x){ x.classList.remove('on'); });
+      c.classList.add('on');
+      els.url.value = c.getAttribute('data-url');
+      els.raw.value = '';
+      $('pasteChip').classList.remove('on');
+    });
+  });
+
+  $('pasteChip').addEventListener('click', function(){
+    var on = this.classList.toggle('on');
+    if(on){
+      els.raw.focus();
+      log('已切换到「粘贴 JSON」模式，请在下方文本框粘贴 api.json 内容', 'warn');
+    }
+  });
+
+  els.jar.addEventListener('change', function(){
+    var f = els.jar.files[0];
+    if(!f){ localJar = null; return; }
+    var reader = new FileReader();
+    reader.onload = function(){
+      localJar = { name:f.name, data:new Uint8Array(reader.result) };
+      $('jarLabel').textContent = '已选择：' + f.name + '（' + fmtSize(f.size) + '）';
+    };
+    reader.readAsArrayBuffer(f);
+  });
+
+  $('runBtn').addEventListener('click', run);
+  els.url.addEventListener('keydown', function(e){ if(e.key === 'Enter') run(); });
+})();
+</script>
+</body>
+</html>
