@@ -1,0 +1,28 @@
+name: import-html
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: fetch source
+        run: curl -fsSL --max-time 60 -o index.html "$SRC"
+        env:
+          SRC: https://aka.doubaocdn.com/s/Jmq77FJtgT
+
+      - name: commit
+        run: |
+          git config user.name "importer"
+          git config user.email "importer@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m "import index.html"
+          git push
