@@ -378,6 +378,11 @@
       <input id="proxyUrl" type="text" spellcheck="false" placeholder="https://你的worker域名/?url={url}">
     </div>
 
+    <button class="btn btn-outline" id="parseBtn" style="margin-top:10px">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      只解析不打包（先看内容）
+    </button>
+
     <button class="btn btn-primary" id="runBtn">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
       开始生成本地包
@@ -400,6 +405,21 @@
       <strong>选择文件</strong>
       <input type="file" id="jarFile" accept=".jar,.zip,.png,.jpg,.jpeg,.txt,.bin">
     </label>
+  </section>
+
+  <!-- ===== 视图：解析结果 ===== -->
+  <section class="card hide" id="parseCard">
+    <div class="section-head">
+      <span class="section-title">解析结果</span>
+      <span class="section-sub" id="parseMeta"></span>
+    </div>
+    <pre class="log" id="parseOut" style="max-height:340px;white-space:pre-wrap;word-break:break-all"></pre>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
+      <button class="btn btn-outline" id="parseCopy">复制内容</button>
+      <button class="btn btn-outline" id="parseDlJson">下载 .json</button>
+      <button class="btn btn-outline" id="parseDlTxt">下载 .txt</button>
+      <button class="btn btn-primary" id="parseToPack">用它打包本地包</button>
+    </div>
   </section>
 
   <!-- ===== 视图：日志 ===== -->
@@ -1233,6 +1253,67 @@ async function decryptConfig(text){
     }
   }
 
+  /* ===== 只解析：拉取任意链接 → 自动解密 → 显示 JSON / 文本 ===== */
+  var lastParsed = null;
+
+  function saveText(name, txt, mime){
+    var blob = new Blob([txt], { type: mime || 'text/plain;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+
+  async function doParse(){
+    var btn = $('parseBtn'), old = btn.textContent;
+    btn.disabled = true; btn.textContent = '解析中…';
+    logEl.innerHTML = '';
+    $('logCard').classList.remove('hide');
+    $('parseCard').classList.add('hide');
+    try {
+      var url = els.url.value.trim();
+      var raw = els.raw.value.trim();
+      var text = null;
+      if(raw){
+        log('① 使用手动粘贴的内容');
+        text = raw;
+      } else {
+        if(!url) throw new Error('先填一个链接，或粘贴内容');
+        log('① 拉取：' + url);
+        var b = await getFile(url, { minSize:2 });
+        text = new TextDecoder().decode(b);
+        log('  ✓ 已获取（' + fmtSize(b.length) + '）', 'ok');
+      }
+
+      log('② 识别格式 / 尝试解密…');
+      var dec = await decryptConfig(text);
+      var out = text, mode = '原文';
+      if(dec.mode){ out = dec.text; mode = dec.mode; }
+      log(dec.mode ? ('  ✓ 解密成功（' + dec.mode + '）') : '  · 未检测到加密，按原文处理', dec.mode ? 'ok' : 'warn');
+
+      var isJson = looksLikeJson(out);
+      var shown = out;
+      if(isJson){
+        try { shown = JSON.stringify(JSON.parse(out), null, 2); } catch(e){}
+      }
+      lastParsed = { text:shown, isJson:isJson, mode:mode };
+
+      var size = fmtSize(new TextEncoder().encode(shown).length);
+      $('parseOut').textContent = shown.length > 15000
+        ? shown.slice(0, 15000) + '\n…（内容较长，已截断显示，完整内容点下面下载）'
+        : shown;
+      $('parseMeta').textContent = mode + ' · ' + (isJson ? 'JSON' : 'TXT') + ' · ' + size;
+      $('parseCard').classList.remove('hide');
+      $('parseCard').scrollIntoView({ behavior:'smooth', block:'start' });
+      log('  ✓ 解析完成', 'ok');
+    } catch(e){
+      log('✗ 失败：' + (e && e.message ? e.message : e), 'err');
+      log('→ 对方若按 UA 分流或没给跨域头，网页拿不到内容，只能走自己的代理', 'warn');
+    } finally {
+      btn.disabled = false; btn.textContent = old;
+    }
+  }
+
   document.querySelectorAll('.chip[data-url]').forEach(function(c){
     c.addEventListener('click', function(){
       document.querySelectorAll('.chip[data-url]').forEach(function(x){ x.classList.remove('on'); });
@@ -1249,6 +1330,31 @@ async function decryptConfig(text){
       els.raw.focus();
       log('已切换到「粘贴 JSON」模式，请在下方文本框粘贴 api.json 内容', 'warn');
     }
+  });
+
+  $('parseBtn').addEventListener('click', doParse);
+  $('parseCopy').addEventListener('click', function(){
+    if(!lastParsed){ log('还没有可复制的内容', 'warn'); return; }
+    var ok = function(){ log('已复制到剪贴板', 'ok'); };
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(lastParsed.text).then(ok).catch(function(){ log('复制失败，请手动全选', 'err'); });
+    } else { log('当前浏览器不支持自动复制，请手动全选', 'warn'); }
+  });
+  $('parseDlJson').addEventListener('click', function(){
+    if(!lastParsed){ log('还没有可下载的内容', 'warn'); return; }
+    saveText((els.zip.value.trim() || 'config') + '.json', lastParsed.text, 'application/json;charset=utf-8');
+    log('已下载 .json', 'ok');
+  });
+  $('parseDlTxt').addEventListener('click', function(){
+    if(!lastParsed){ log('还没有可下载的内容', 'warn'); return; }
+    saveText((els.zip.value.trim() || 'config') + '.txt', lastParsed.text, 'text/plain;charset=utf-8');
+    log('已下载 .txt', 'ok');
+  });
+  $('parseToPack').addEventListener('click', function(){
+    if(!lastParsed){ log('还没有解析结果', 'warn'); return; }
+    els.raw.value = lastParsed.text;
+    log('已把解析结果填进下方输入框，开始打包…', 'ok');
+    run();
   });
 
   els.jar.addEventListener('change', function(){
