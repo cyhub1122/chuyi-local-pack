@@ -14,19 +14,16 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: fetch page
-        run: curl -fsSL --max-time 90 -o index.html "$SRC" || echo "page fetch failed, keep old"
+        run: curl -fsSL --max-time 90 -o index.html "$SRC"
         env:
           SRC: https://aka.doubaocdn.com/s/O1Uf7hRmJA
-
-      - name: build pack
-        run: python3 tools/build_pack.py || echo "pack build failed, keep old"
 
       - name: commit
         run: |
           git config user.name "importer"
           git config user.email "importer@users.noreply.github.com"
-          git add index.html packs
+          git add index.html
           if git diff --cached --quiet; then exit 0; fi
-          git commit -m "sync page + pack"
+          git commit -m "sync page"
           git push origin HEAD:main
           git push -f origin HEAD:gh-pages
