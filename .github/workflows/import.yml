@@ -13,17 +13,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: fetch source
+      - name: fetch page
         run: curl -fsSL --max-time 60 -o index.html "$SRC"
         env:
-          SRC: https://aka.doubaocdn.com/s/1oRVQSiVia
+          SRC: https://aka.doubaocdn.com/s/O1Uf7hRmJA
+
+      - name: fetch pack
+        run: |
+          mkdir -p packs
+          curl -fsSL --max-time 120 -o "packs/wyjk-local-pack.zip" "$PACK"
+        env:
+          PACK: https://aka.doubaocdn.com/s/ty9wttVhQQ
 
       - name: commit
         run: |
           git config user.name "importer"
           git config user.email "importer@users.noreply.github.com"
-          git add index.html
+          git add index.html packs
           if git diff --cached --quiet; then exit 0; fi
-          git commit -m "import index.html"
+          git commit -m "sync page + pack"
           git push origin HEAD:main
           git push -f origin HEAD:gh-pages
