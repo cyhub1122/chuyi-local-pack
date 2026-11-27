@@ -442,6 +442,10 @@
       <p>没有。工具不看后缀和 <code>Content-Type</code>，只看返回的内容是不是合法 JSON。所以 <code>api.json</code>、<code>xxx.txt</code>，甚至伪装成 <code>easytv.jpg</code> / <code>easytv.png</code> 的配置链接都能直接跑；配置里 spider 指向的 jar 也允许伪装成 <code>.png</code>，工具按 ZIP 文件头识别，不看扩展名。</p>
     </details>
     <details>
+      <summary>对方按 UA 分流、不给跨域头怎么办？</summary>
+      <p>有些接口只对 TVBox 客户端（<code>okhttp</code> UA）返回真数据，其余一律给诱饵页，而且不带 <code>Access-Control-Allow-Origin</code>，浏览器里 <code>fetch()</code> 又改不了 UA。这种只能用一个自己部署的转发：Cloudflare Worker 里把 UA 改成 <code>okhttp/3.12.0</code>、补上跨域头再透传，然后把地址填进上面的「自定义代理」，格式 <code>https://你的worker域名/?url={url}</code>，配置和 jar 都会自动走这条路。</p>
+    </details>
+    <details>
       <summary>加密接口能直接用吗？</summary>
       <p>能。内容拉到后如果解析不出 JSON，工具会在本地依次尝试：base64 解压（标准）、双层 base64 解压、XOR 兼容、反转兼容，并自动去掉 <code>TVBOX$</code> / <code>FINAL$</code> 之类前缀。全程在浏览器里算，不经过任何服务器。解不出来时就换「手动兜底」把明文粘进来。</p>
     </details>
@@ -838,6 +842,13 @@ function xor73Only(text){
   return arr.join('');
 }
 
+/* 从混杂文本里抽最长的 base64 段（有些接口会返回「十六进制转储 + base64 尾巴」的伪装） */
+function findB64Candidates(text){
+  var runs = String(text).match(/[A-Za-z0-9+\/=]{200,}/g) || [];
+  runs.sort(function(a, b){ return b.length - a.length; });
+  return runs.slice(0, 3);
+}
+
 /* 依次尝试：明文 → base64+inflate → 双层 → XOR 兼容 → 反转兼容 */
 async function decryptConfig(text){
   var raw = String(text || '').trim();
@@ -876,6 +887,19 @@ async function decryptConfig(text){
     var out = removeMagic(data);
     if(looksLikeJson(out)) return { text:out, mode:tries[t].mode };
   }
+  var cands = findB64Candidates(raw);
+  for(var c=0;c<cands.length;c++){
+    var candBytes = b64ToBytes(cands[c]);
+    if(!candBytes) continue;
+    var plainCut = removeMagic(dec.decode(candBytes));
+    if(looksLikeJson(plainCut)) return { text:plainCut, mode:'从混合文本提取 base64' };
+    var cutBytes = await inflateBytes(candBytes);
+    if(cutBytes){
+      var cutText = removeMagic(dec.decode(cutBytes));
+      if(looksLikeJson(cutText)) return { text:cutText, mode:'从混合文本提取 base64 + 解压' };
+    }
+  }
+
   return { text:raw, mode:'' };
 }
 /* ==== CORE_END ==== */
