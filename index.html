@@ -298,7 +298,7 @@
     </div>
     <div class="hero-txt">
       <h1>初忆本地包生成器</h1>
-      <p>输入 TVBox 配置链接，自动下载 api.json 与 spider.jar，改写本地路径并写入 MD5，一键打包成 zip 本地包。</p>
+      <p>输入 TVBox 配置链接，自动下载配置与 spider，改写本地路径并写入 MD5，一键打包成 zip 本地包。链接后缀不限，加密接口会先在本地解密再打包。</p>
       <div class="tag-group">
         <span class="tag tag-blue">TVBox</span>
         <span class="tag tag-green">本地包</span>
@@ -315,10 +315,10 @@
     </div>
 
     <div class="field">
-      <label class="cap" for="cfgUrl">api.json 配置链接</label>
+      <label class="cap" for="cfgUrl">配置链接（.json / .txt / .jpg / .png 都可以，只看内容不看后缀）</label>
       <input id="cfgUrl" type="text" spellcheck="false"
         value="https://gitee.com/cycod/tvbox/raw/master/api.json"
-        placeholder="https://xxx.com/tvbox/api.json">
+        placeholder="https://xxx.com/tvbox/api.json 或 https://xxx/easytv.jpg">
     </div>
 
     <div class="chips">
@@ -354,6 +354,18 @@
           <small>sites 里 http(s) 结尾的 .py/.js 下载到 py/，进阶用法，部分内核不认本地 py</small>
         </span>
       </label>
+      <label class="switch">
+        <input type="checkbox" id="optImg" checked>
+        <span class="txt">把壁纸 / logo 等图片一起打进包里
+          <small>配置里的 wallpaper、logo、icon 图片下载到 img/，离线也不会白屏</small>
+        </span>
+      </label>
+      <label class="switch">
+        <input type="checkbox" id="optImgRewrite">
+        <span class="txt">并把配置里的图片地址改成本地路径
+          <small>改成 ./img/xxx.png；部分内核不认本地图片，默认只打包不改写</small>
+        </span>
+      </label>
     </div>
 
     <div class="field" style="margin-top:20px">
@@ -380,13 +392,13 @@
       <span class="section-sub">配置链接抓不到时用</span>
     </div>
     <div class="field">
-      <label class="cap" for="rawJson">直接粘贴 api.json 内容（留空则用上方的链接）</label>
-      <textarea id="rawJson" spellcheck="false" placeholder='{ "spider": "https://xxx/spider.jar;md5;abc", "sites": [ ... ] }'></textarea>
+      <label class="cap" for="rawJson">直接粘贴 api.json 内容或加密串（加密串会自动尝试解密）</label>
+      <textarea id="rawJson" spellcheck="false" placeholder='{ "spider": "https://xxx/spider.jar;md5;abc", "sites": [ ... ] }　或直接粘贴 base64 加密串'></textarea>
     </div>
     <label class="filepick" for="jarFile">
-      <span id="jarLabel">选择本地 spider.jar 文件（可选）</span>
+      <span id="jarLabel">选择本地 spider 文件（可选，伪装成 png/jpg 的也行）</span>
       <strong>选择文件</strong>
-      <input type="file" id="jarFile" accept=".jar,.zip">
+      <input type="file" id="jarFile" accept=".jar,.zip,.png,.jpg,.jpeg,.txt,.bin">
     </label>
   </section>
 
@@ -426,8 +438,16 @@
       <span class="section-title">说明</span>
     </div>
     <details open>
+      <summary>配置链接后缀有要求吗？</summary>
+      <p>没有。工具不看后缀和 <code>Content-Type</code>，只看返回的内容是不是合法 JSON。所以 <code>api.json</code>、<code>xxx.txt</code>，甚至伪装成 <code>easytv.jpg</code> / <code>easytv.png</code> 的配置链接都能直接跑；配置里 spider 指向的 jar 也允许伪装成 <code>.png</code>，工具按 ZIP 文件头识别，不看扩展名。</p>
+    </details>
+    <details>
+      <summary>加密接口能直接用吗？</summary>
+      <p>能。内容拉到后如果解析不出 JSON，工具会在本地依次尝试：base64 解压（标准）、双层 base64 解压、XOR 兼容、反转兼容，并自动去掉 <code>TVBOX$</code> / <code>FINAL$</code> 之类前缀。全程在浏览器里算，不经过任何服务器。解不出来时就换「手动兜底」把明文粘进来。</p>
+    </details>
+    <details>
       <summary>为什么有时抓不到配置？</summary>
-      <p>浏览器有跨域限制（CORS）：直接 fetch 别人的 raw 链接，服务器不给允许头就会被拦。本工具已做分层处理 —— Gitee 仓库地址自动改走 Gitee OpenAPI（接口带 <code>Access-Control-Allow-Origin: *</code>，可直读 api.json 与 spider.jar）；GitHub raw 本身允许跨域，可直连；其余站点再依次尝试公共代理和你填的自定义代理。全部失败时用「手动兜底」：api.json 粘贴进来、jar 本地选一下，照样能打包。</p>
+      <p>浏览器有跨域限制（CORS）：直接 fetch 别人的 raw 链接，服务器不给允许头就会被拦。本工具已做分层处理 —— Gitee 仓库地址自动改走 Gitee OpenAPI（接口带 <code>Access-Control-Allow-Origin: *</code>，可直读配置与 jar）；GitHub raw 本身允许跨域，可直连；其余站点再依次尝试公共代理和你填的自定义代理。全部失败时用「手动兜底」：配置粘贴进来、jar 本地选一下，照样能打包。</p>
     </details>
     <details>
       <summary>支持哪些 spider 写法？</summary>
@@ -690,6 +710,43 @@ function collectAssets(obj, baseUrl){
   return { pyList:pyList, liveList:liveList };
 }
 
+/* 按文件头识别图片类型，返回扩展名 */
+function imageExt(bytes){
+  if(!bytes || bytes.length < 12) return '';
+  var b = bytes;
+  if(b[0] === 0xFF && b[1] === 0xD8) return 'jpg';
+  if(b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4E && b[3] === 0x47) return 'png';
+  if(b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46) return 'gif';
+  if(b[0] === 0x42 && b[1] === 0x4D) return 'bmp';
+  if(b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46 && b[8] === 0x57 && b[9] === 0x45) return 'webp';
+  return '';
+}
+
+/* 挑出配置里引用图片的位置（壁纸 / logo / 图标） */
+function collectImages(obj){
+  var out = [], seen = {};
+  var KEYS = { wallpaper:1, wallpaper2:1, logo:1, icon:1, pic:1, img:1, image:1, cover:1 };
+  function walk(node, depth){
+    if(!node || typeof node !== 'object' || depth > 3) return;
+    if(Array.isArray(node)){
+      for(var i=0;i<node.length;i++) walk(node[i], depth + 1);
+      return;
+    }
+    Object.keys(node).forEach(function(k){
+      var v = node[k];
+      if(v && typeof v === 'object'){ walk(v, depth + 1); return; }
+      if(typeof v !== 'string') return;
+      if(KEYS[String(k).toLowerCase()] !== 1) return;
+      if(!/^http(s)?:\/\//i.test(v)) return;
+      if(seen[v]) return;
+      seen[v] = 1;
+      out.push({ parent:node, key:k, url:v });
+    });
+  }
+  walk(obj, 0);
+  return out;
+}
+
 function baseName(u){
   var clean = String(u).split('?')[0].split('#')[0];
   var seg = clean.split('/').pop() || 'file';
@@ -718,6 +775,109 @@ function parseGiteeRaw(u){
   if(m) return null;
   return null;
 }
+/* ===== 本地解密：移植「TVBox 全能解密工具箱」的三套算法 ===== */
+
+/* base64 文本 → Uint8Array，失败返回 null */
+function b64ToBytes(text){
+  var s = String(text || '').replace(/\s/g, '').replace(/[^A-Za-z0-9+/=]/g, '');
+  if(s.length < 8) return null;
+  while(s.length % 4) s += '=';
+  var bin;
+  try { bin = atob(s); } catch(e){ return null; }
+  var out = new Uint8Array(bin.length);
+  for(var i=0;i<bin.length;i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+/* 用浏览器原生 DecompressionStream 解压（gzip / zlib / raw 依次尝试） */
+async function inflateBytes(bytes){
+  if(!bytes || !bytes.length) return null;
+  if(typeof DecompressionStream === 'undefined') return null;
+  var fmts = ['gzip', 'deflate', 'deflate-raw'];
+  for(var i=0;i<fmts.length;i++){
+    try {
+      var stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream(fmts[i]));
+      var buf = await new Response(stream).arrayBuffer();
+      if(buf.byteLength) return new Uint8Array(buf);
+    } catch(e){}
+  }
+  return null;
+}
+
+/* 去掉 TVBOX$ / TVBOX_ / FINAL$ / NO_REVERSE$ 等前缀标记 */
+function removeMagic(str){
+  var m = ['TVBOX$', 'TVBOX_', 'FINAL$', 'NO_REVERSE$'];
+  var s = String(str || '');
+  for(var i=0;i<m.length;i++){
+    if(s.indexOf(m[i]) >= 0){
+      var parts = s.split(m[i]);
+      s = parts[parts.length - 1];
+    }
+  }
+  return s;
+}
+
+function looksLikeJson(text){
+  var t = String(text || '').trim();
+  if(!t) return false;
+  try { JSON.parse(t); return true; } catch(e){ return false; }
+}
+
+/* 逐字 XOR 0x73 并反转（对应原工具里的「XOR 兼容」分支） */
+function xor73Reverse(text){
+  var s = String(text || '');
+  var arr = [];
+  for(var i=0;i<s.length;i++) arr.push(String.fromCharCode(s.charCodeAt(i) ^ 0x73));
+  return arr.join('').split('').reverse().join('');
+}
+
+function xor73Only(text){
+  var s = String(text || '');
+  var arr = [];
+  for(var i=0;i<s.length;i++) arr.push(String.fromCharCode(s.charCodeAt(i) ^ 0x73));
+  return arr.join('');
+}
+
+/* 依次尝试：明文 → base64+inflate → 双层 → XOR 兼容 → 反转兼容 */
+async function decryptConfig(text){
+  var raw = String(text || '').trim();
+  if(looksLikeJson(raw)) return { text:raw, mode:'明文' };
+
+  var dec = new TextDecoder();
+  var tries = [
+    { mode:'标准解密',       steps:['b64', 'inflate'] },
+    { mode:'双层解密',       steps:['b64', 'b64', 'inflate'] },
+    { mode:'XOR 兼容解密',   steps:['b64', 'inflate', 'xorrev'] },
+    { mode:'反转兼容解密',   steps:['b64', 'inflate', 'reverse'] },
+    { mode:'XOR 兼容解密(不反转)', steps:['b64', 'inflate', 'xor'] }
+  ];
+
+  for(var t=0;t<tries.length;t++){
+    var data = raw, ok = true;
+    for(var s=0;s<tries[t].steps.length;s++){
+      var step = tries[t].steps[s];
+      if(step === 'b64'){
+        if(typeof data !== 'string') data = dec.decode(data);
+        data = b64ToBytes(data);
+        if(!data) { ok = false; break; }
+      } else if(step === 'inflate'){
+        var inflated = await inflateBytes(data);
+        if(!inflated) { ok = false; break; }
+        data = dec.decode(inflated);
+      } else if(step === 'xorrev'){
+        data = xor73Reverse(data);
+      } else if(step === 'reverse'){
+        data = String(data).split('').reverse().join('');
+      } else if(step === 'xor'){
+        data = xor73Only(data);
+      }
+    }
+    if(!ok) continue;
+    var out = removeMagic(data);
+    if(looksLikeJson(out)) return { text:out, mode:tries[t].mode };
+  }
+  return { text:raw, mode:'' };
+}
 /* ==== CORE_END ==== */
 
 /* ==== 以下为浏览器交互层 ==== */
@@ -726,7 +886,8 @@ function parseGiteeRaw(u){
   var logEl = $('log');
   var els = {
     url: $('cfgUrl'), zip: $('zipName'), raw: $('rawJson'), jar: $('jarFile'), proxy: $('proxyUrl'),
-    optJar: $('optJar'), optMd5: $('optMd5'), optLive: $('optLive'), optPy: $('optPy')
+    optJar: $('optJar'), optMd5: $('optMd5'), optLive: $('optLive'), optPy: $('optPy'),
+    optImg: $('optImg'), optImgRewrite: $('optImgRewrite')
   };
   var localJar = null;
 
@@ -844,20 +1005,29 @@ function parseGiteeRaw(u){
 
       /* 1. 取配置文本 */
       if(raw){
-        log('① 使用手动粘贴的 JSON 内容');
+        log('① 使用手动粘贴的内容');
         jsonText = raw;
       } else {
-        if(!url) throw new Error('请填写配置链接，或粘贴 JSON 内容');
+        if(!url) throw new Error('请填写配置链接，或粘贴内容');
         log('① 下载配置：' + url);
-        var cfgBytes = await getFile(url, { minSize:2, validate:validateJsonBytes });
+        var cfgBytes = await getFile(url, { minSize:2 });
         jsonText = new TextDecoder().decode(cfgBytes);
         log('  ✓ 配置已获取（' + fmtSize(cfgBytes.length) + '）', 'ok');
       }
 
+      /* 1b. 不是明文 JSON 就本地解密（移植自「TVBox 全能解密工具箱」） */
+      var dec = await decryptConfig(jsonText);
+      if(dec.mode && dec.mode !== '明文'){
+        jsonText = dec.text;
+        log('  ✓ 检测到加密配置，本地解密成功（' + dec.mode + '）', 'ok');
+      } else if(!dec.mode){
+        log('  ! 内容既不是 JSON，解密也没成功（可能是不支持的加密格式）', 'warn');
+      }
+
       /* 2. 解析 */
       var obj = null;
-      try { obj = JSON.parse(jsonText); } catch(e){ log('  ! JSON 解析失败，将只做文本级路径改写', 'warn'); }
-      if(!obj) throw new Error('配置不是合法 JSON，无法继续');
+      try { obj = JSON.parse(jsonText); } catch(e){ log('  ! JSON 解析失败', 'warn'); }
+      if(!obj) throw new Error('配置不是合法 JSON，无法继续（换个解密方式或换链接试试）');
       var sitesCount = (obj.sites || []).length;
       var livesCount = (obj.lives || []).length;
       log('② 解析完成：站点 ' + sitesCount + ' 个，直播源 ' + livesCount + ' 个');
@@ -958,15 +1128,44 @@ function parseGiteeRaw(u){
         }
       }
 
+      /* 4b. 图片资源：壁纸 / logo / 图标 */
+      var imgFiles = [];
+      if(els.optImg.checked){
+        var imgList = collectImages(obj).slice(0, 12);
+        if(imgList.length){
+          log('⑦ 打包图片 ' + imgList.length + ' 张（' + (els.optImgRewrite.checked ? '同时改写为本地路径' : '只打包，不改地址') + '）');
+          for(var k=0;k<imgList.length;k++){
+            var im = imgList[k];
+            var iurl = resolveUrl(im.url, baseUrl);
+            var iidx = k + 1;
+            try {
+              var ib = await getFile(iurl, { minSize:60 });
+              var iext = imageExt(ib);
+              if(!iext) throw new Error('返回的不是图片');
+              var ibase = asciiSafeName(baseName(iurl), 'img' + iidx).replace(/\.(jpg|jpeg|png|gif|webp|bmp)$/i, '');
+              if(!ibase) ibase = 'img' + iidx;
+              var iname = ibase + '_' + iidx + '.' + iext;
+              imgFiles.push({ name:'img/' + iname, data:ib });
+              log('  ✓ ' + iname + '（' + fmtSize(ib.length) + '）', 'ok');
+              if(els.optImgRewrite.checked) im.parent[im.key] = './img/' + iname;
+            } catch(e){
+              log('  ✗ ' + im.key + ' 跳过：' + e.message, 'err');
+            }
+          }
+        } else {
+          log('  · 配置里没有可打包的图片', 'warn');
+        }
+      }
+
       /* 5. 写出 api.json */
       var outJson;
-      if(els.optPy.checked || els.optLive.checked){
+      if(els.optPy.checked || els.optLive.checked || (els.optImg.checked && els.optImgRewrite.checked)){
         obj.spider = newSpider;
         outJson = JSON.stringify(obj, null, 2);
-        log('⑦ 重新序列化 api.json（已包含 py / 直播本地化）');
+        log('⑧ 重新序列化 api.json（已包含 py / 直播 / 图片本地化）');
       } else {
         outJson = patchSpiderText(jsonText, newSpider);
-        log('⑦ 已改写 spider 字段（保留原有排版）');
+        log('⑧ 已改写 spider 字段（保留原有排版）');
       }
       log('  spider → ' + newSpider, 'ok');
 
@@ -974,9 +1173,10 @@ function parseGiteeRaw(u){
       if(jarBytes) files.push({ name:'jar/spider.jar', data:jarBytes });
       pyBytesList.forEach(function(f){ files.push(f); });
       liveBytesList.forEach(function(f){ files.push(f); });
+      imgFiles.forEach(function(f){ files.push(f); });
 
       /* 6. 打包 */
-      log('⑧ 打包 zip…');
+      log('⑨ 打包 zip…');
       var zipBytes = buildZip(files, new Date());
       var fileName = (els.zip.value.trim() || '初忆本地包') + '.zip';
       var blob = new Blob([zipBytes], { type:'application/zip' });
