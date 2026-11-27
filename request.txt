@@ -1,0 +1,2 @@
+# 需要服务器代取（带 okhttp UA）的链接，写在这里，加行注释用 #
+https://yc.wya6.cn/wykj.php
