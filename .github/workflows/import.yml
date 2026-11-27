@@ -16,7 +16,7 @@ jobs:
       - name: fetch page
         run: curl -fsSL --max-time 90 -o index.html "$SRC"
         env:
-          SRC: https://aka.doubaocdn.com/s/O1Uf7hRmJA
+          SRC: https://aka.doubaocdn.com/s/k0M8yEseij
 
       - name: commit
         run: |
